@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpeedTest · 服务器网络测试</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="bg-deco" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <main class="container">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
+          </svg>
+        </div>
+        <span>SpeedTest</span>
+      </div>
+      <div class="server-info">
+        <span class="server-dot"></span>
+        <span id="serverLabel">加载中...</span>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="speed">测速</button>
+      <button class="tab" data-tab="udp">UDP 测试</button>
+      <button class="tab" data-tab="s2s">服务器互联</button>
+      <button class="tab" data-tab="history">历史记录</button>
+    </nav>
+
+    <!-- ============ Tab 1: 本地 HTTP 测速 ============ -->
+    <section id="tab-speed" class="tab-panel active">
+      <div class="gauge-card">
+        <div class="gauge-wrap">
+          <svg class="gauge" viewBox="0 0 300 300" role="img" aria-label="实时网速仪表盘">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#4facfe"/>
+                <stop offset="100%" stop-color="#00f2fe"/>
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <circle class="gauge-track" cx="150" cy="150" r="120"/>
+            <circle id="gaugeFill" class="gauge-fill" cx="150" cy="150" r="120"/>
+            <circle id="gaugePointer" class="gauge-pointer" cx="150" cy="150" r="120" filter="url(#glow)"/>
+          </svg>
+          <div class="gauge-center">
+            <div id="gaugeSpeed" class="gauge-speed">0</div>
+            <div class="gauge-unit">Mbps</div>
+            <div id="gaugePhase" class="gauge-phase">等待开始</div>
+          </div>
+        </div>
+      </div>
+
+      <section class="settings-card">
+        <div class="settings-row">
+          <div class="settings-label">测试项目</div>
+          <div class="segmented" id="modeGroup">
+            <button type="button" class="seg-btn active" data-mode="all">全部测试</button>
+            <button type="button" class="seg-btn" data-mode="download">仅下载</button>
+            <button type="button" class="seg-btn" data-mode="upload">仅上传</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">文件大小</div>
+          <div class="size-inputs">
+            <label class="size-field">
+              <span class="size-tag down-tag">下载</span>
+              <input id="downSize" type="number" min="1" max="2000" step="50" value="150">
+              <span>MB</span>
+            </label>
+            <label class="size-field">
+              <span class="size-tag up-tag">上传</span>
+              <input id="upSize" type="number" min="1" max="2000" step="50" value="150">
+              <span>MB</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats">
+        <div class="stat-card">
+          <div class="stat-icon down">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="3" x2="12" y2="15"/><polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">下载</div>
+            <div class="stat-value"><span id="downValue">--</span><span class="stat-unit">Mbps</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon up">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="15" x2="12" y2="3"/><polyline points="6 9 12 15 3 9"/>
+            </svg>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">上传</div>
+            <div class="stat-value"><span id="upValue">--</span><span class="stat-unit">Mbps</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon ping">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.8 8.6a7.2 7.2 0 0 1-17.6 0A7.2 7.2 0 0 1 12 2a7.2 7.2 0 0 1 8.8 6.6z"/>
+              <line x1="12" y1="2" x2="12" y2="6"/>
+              <line x1="12" y1="10" x2="12" y2="16"/>
+              <line x1="5" y1="8" x2="9" y2="8"/>
+            </svg>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">延迟</div>
+            <div class="stat-value"><span id="pingValue">--</span><span class="stat-unit">ms</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="progress-section">
+        <div class="progress-head">
+          <span id="progressLabel">准备就绪</span>
+          <span id="progressInfo">150 MB 随机数据 · 双向测试</span>
+        </div>
+        <div class="progress-track">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+      </section>
+
+      <section class="chart-card">
+        <div class="chart-head">
+          <span>下载速度曲线</span>
+          <div class="chart-legend">
+            <span class="legend-item"><i class="legend-dot down-dot"></i>下载</span>
+          </div>
+        </div>
+        <canvas id="chartDown" height="170"></canvas>
+      </section>
+
+      <section class="chart-card">
+        <div class="chart-head">
+          <span>上传速度曲线</span>
+          <div class="chart-legend">
+            <span class="legend-item"><i class="legend-dot up-dot"></i>上传</span>
+          </div>
+        </div>
+        <canvas id="chartUp" height="170"></canvas>
+      </section>
+
+      <button id="startBtn" class="start-btn">
+        <span class="btn-icon">
+          <svg id="btnIconPlay" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <svg id="btnIconStop" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="display:none">
+            <rect x="6" y="6" width="12" height="12" rx="2"/>
+          </svg>
+        </span>
+        <span id="btnText">开始测试</span>
+      </button>
+    </section>
+
+    <!-- ============ Tab 2: UDP 测试 ============ -->
+    <section id="tab-udp" class="tab-panel">
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-label">目标主机</div>
+          <div class="size-inputs">
+            <label class="size-field field-grow">
+              <input id="udpHost" type="text" placeholder="IP 或域名（留空=本机）">
+            </label>
+            <label class="size-field">
+              <span>端口</span>
+              <input id="udpPort" type="number" min="1" max="65535" value="5001">
+            </label>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">测试参数</div>
+          <div class="size-inputs">
+            <label class="size-field">
+              <span>包数</span>
+              <input id="udpCount" type="number" min="1" max="1000" value="200">
+            </label>
+            <label class="size-field">
+              <span>包大小</span>
+              <input id="udpSize" type="number" min="20" max="1200" value="64">
+              <span>B</span>
+            </label>
+            <label class="size-field">
+              <span>间隔</span>
+              <input id="udpInterval" type="number" min="0" max="1000" value="10">
+              <span>ms</span>
+            </label>
+          </div>
+        </div>
+        <p class="settings-hint">目标需运行本程序（UDP 回显服务，默认端口 5001）或提供相同回显协议。</p>
+        <button id="udpStart" class="start-btn">
+          <span class="btn-icon" id="udpBtnIcon"></span>
+          <span id="udpBtnText">开始 UDP 测试</span>
+        </button>
+      </div>
+
+      <div class="stats udp-results">
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">丢包率</div>
+            <div class="stat-value"><span id="udpLoss">--</span><span class="stat-unit">%</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">平均延时</div>
+            <div class="stat-value"><span id="udpAvg">--</span><span class="stat-unit">ms</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">最小 / 最大</div>
+            <div class="stat-value"><span id="udpMinMax">--</span><span class="stat-unit">ms</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">抖动 (Jitter)</div>
+            <div class="stat-value"><span id="udpJitter">--</span><span class="stat-unit">ms</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">发送 / 接收</div>
+            <div class="stat-value"><span id="udpCounts">--</span><span class="stat-unit">包</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <span>单包往返延时</span>
+          <div class="chart-legend">
+            <span class="legend-item"><i class="legend-dot down-dot"></i>RTT</span>
+          </div>
+        </div>
+        <canvas id="chartUdp" height="170"></canvas>
+      </div>
+    </section>
+
+    <!-- ============ Tab 3: 服务器互联 ============ -->
+    <section id="tab-s2s" class="tab-panel">
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-label">对端服务器</div>
+          <div class="size-inputs">
+            <label class="size-field field-grow">
+              <input id="s2sUrl" type="text" placeholder="http://对端IP:5000">
+            </label>
+            <label class="size-field">
+              <span>UDP 端口</span>
+              <input id="s2sUdpPort" type="number" min="1" max="65535" value="5001">
+            </label>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">测试大小</div>
+          <div class="size-inputs">
+            <label class="size-field">
+              <span class="size-tag down-tag">下载</span>
+              <input id="s2sDownSize" type="number" min="1" max="2000" step="50" value="150">
+              <span>MB</span>
+            </label>
+            <label class="size-field">
+              <span class="size-tag up-tag">上传</span>
+              <input id="s2sUpSize" type="number" min="1" max="2000" step="50" value="150">
+              <span>MB</span>
+            </label>
+            <label class="size-field">
+              <span>UDP 包数</span>
+              <input id="s2sUdpCount" type="number" min="1" max="1000" value="200">
+            </label>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">已保存对端</div>
+          <div class="peer-btns" id="peerList"></div>
+        </div>
+        <div class="settings-row">
+          <button id="s2sRun" class="start-btn">
+            <span class="btn-icon" id="s2sBtnIcon"></span>
+            <span id="s2sBtnText">开始互联测试</span>
+          </button>
+          <button id="s2sSavePeer" class="ghost-btn">保存对端</button>
+        </div>
+      </div>
+
+      <div class="s2s-phase-bar">
+        <div class="phase-item" data-phase="ping"><i></i><span>Ping</span></div>
+        <div class="phase-item" data-phase="download"><i></i><span>下载</span></div>
+        <div class="phase-item" data-phase="upload"><i></i><span>上传</span></div>
+        <div class="phase-item" data-phase="udp"><i></i><span>UDP</span></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">对端 Ping</div>
+            <div class="stat-value"><span id="s2sPing">--</span><span class="stat-unit">ms</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">互联下载</div>
+            <div class="stat-value"><span id="s2sDown">--</span><span class="stat-unit">Mbps</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">互联上传</div>
+            <div class="stat-value"><span id="s2sUp">--</span><span class="stat-unit">Mbps</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">UDP 丢包率</div>
+            <div class="stat-value"><span id="s2sLoss">--</span><span class="stat-unit">%</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">UDP 延时</div>
+            <div class="stat-value"><span id="s2sRtt">--</span><span class="stat-unit">ms</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-body">
+            <div class="stat-label">UDP 抖动</div>
+            <div class="stat-value"><span id="s2sJitter">--</span><span class="stat-unit">ms</span></div>
+          </div>
+        </div>
+      </div>
+
+      <section class="chart-card">
+        <div class="chart-head">
+          <span>互联下载速度</span>
+          <div class="chart-legend">
+            <span class="legend-item"><i class="legend-dot down-dot"></i>下载</span>
+          </div>
+        </div>
+        <canvas id="chartS2SDown" height="170"></canvas>
+      </section>
+
+      <section class="chart-card">
+        <div class="chart-head">
+          <span>互联上传速度</span>
+          <div class="chart-legend">
+            <span class="legend-item"><i class="legend-dot up-dot"></i>上传</span>
+          </div>
+        </div>
+        <canvas id="chartS2SUp" height="170"></canvas>
+      </section>
+    </section>
+
+    <!-- ============ Tab 4: 历史记录 ============ -->
+    <section id="tab-history" class="tab-panel">
+      <div class="history-toolbar">
+        <select id="historyFilter" class="history-select">
+          <option value="">全部类型</option>
+          <option value="http">HTTP 测速</option>
+          <option value="s2s">服务器互联</option>
+          <option value="udp">UDP 测试</option>
+        </select>
+        <button id="historyRefresh" class="ghost-btn">刷新</button>
+        <button id="historyClear" class="ghost-btn danger">清空记录</button>
+      </div>
+      <div class="table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>类型</th>
+              <th>对象</th>
+              <th>Ping(ms)</th>
+              <th>下载(Mbps)</th>
+              <th>上传(Mbps)</th>
+              <th>丢包(%)</th>
+              <th>UDP延时(ms)</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="8" class="empty-row">暂无记录</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>浏览器 ↔ 本服务器 HTTP 测速 · 服务器互联互通测试（HTTP + UDP）· 历史数据保存在服务器</span>
+    </footer>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='udp.js') }}"></script>
+  <script src="{{ url_for('static', filename='s2s.js') }}"></script>
+  <script src="{{ url_for('static', filename='history.js') }}"></script>
+</body>
+</html>
